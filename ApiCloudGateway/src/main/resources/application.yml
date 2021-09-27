@@ -1,0 +1,69 @@
+server:
+  port: 9191
+  
+spring:
+  zipkin:
+    base-url: http://127.0.0.1:9411/
+  cloud:
+    gateway:
+      default-filters:
+      - name: Retry
+        args:
+          retries: 3
+          methods: GET
+          series: SERVER_ERROR
+          exceptions: java.io.IOException, java.util.concurrent.TimeoutException
+          backoff: 
+            firstbackOff: 50ms
+            maxBackoff: 500m
+            factor: 2
+            basedOnPreviousValue: false
+      routes:
+      - id: DEPARTMENT-SERVICE
+        uri: lb://${DEPARTMENT-SERVICE-URL:DEPARTMENT-SERVICE}/dept          
+        predicates:
+        - Path=/dept/**
+        filters:
+        - name: CircuitBreaker
+          args:
+            name: departmentCircuitBreaker
+            fallbackUri: forward:/department-fallback
+      - id: USER-SERVICE
+        uri: lb://${USER-SERVICE-URL:USER-SERVICE}/user
+        predicates:
+        - Path=/user/**
+        filters:
+        - name: CircuitBreaker
+          args:
+            name: userCircuitBreaker
+            fallbackUri: forward:/user-fallback
+  application:
+    name: API-GATEWAY
+  session:
+    store-type: redis
+  redis:
+    host: localhost
+    port: 6379
+    
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+        
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    registerWithEureka: true
+    fetchRegistry: true
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+    
+
+    
+    
+  
+  
+     
+  
